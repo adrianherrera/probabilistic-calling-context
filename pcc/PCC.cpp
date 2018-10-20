@@ -29,7 +29,6 @@ using namespace llvm;
 
 namespace {
 
-static const char *const PCCCalculateName = "__pcc_calculate";
 static const char *const PCCVarName = "__pcc_V";
 
 /// ProbabilisticCallingContext: instrument the code in a module to maintain a
@@ -44,20 +43,6 @@ public:
 
 } // namespace
 
-// Adapted from `llvm::checkSanitizerInterfaceFunction`
-static Function *checkPCCInterfaceFunction(Constant *FuncOrBitcast) {
-  if (isa<Function>(FuncOrBitcast)) {
-    return cast<Function>(FuncOrBitcast);
-  }
-
-  FuncOrBitcast->print(errs());
-  errs() << '\n';
-  std::string Err;
-  raw_string_ostream Stream(Err);
-  Stream << PCCCalculateName << " function redefined: " << *FuncOrBitcast;
-  report_fatal_error(Err);
-}
-
 char ProbabilisticCallingContext::ID = 0;
 
 bool ProbabilisticCallingContext::runOnModule(Module &M) {
@@ -66,11 +51,6 @@ bool ProbabilisticCallingContext::runOnModule(Module &M) {
 
   // Either 32 or 64 bit depending on the target
   IntegerType *IntTy = DL.getIntPtrType(C);
-
-  // PCCCalculate is the function `__pcc_calculate` that (funny enough)
-  // calculates the probabilistic calling context
-  Function *PCCCalculate = checkPCCInterfaceFunction(
-      M.getOrInsertFunction(PCCCalculateName, IntTy, IntTy, IntTy));
 
   // PCCVar is the variable `__pcc_V` that stores the probabilistic calling
   // context
