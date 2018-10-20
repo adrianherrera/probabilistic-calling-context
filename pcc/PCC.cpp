@@ -78,6 +78,10 @@ bool ProbabilisticCallingContext::runOnModule(Module &M) {
         // Note that a hash of the method name and line number are used for
         // `cs` in Mike Bond's original paper. Since this is C/C++ and not
         // Java, we just assign a random value to `cs` instead :)
+        //
+        // Originally I wanted to use the address of the call site, but this
+        // would not be consistent across multiple program executions (thanks
+        // ASLR!)
         ConstantInt *CS = ConstantInt::get(IntTy, random());
 
         IRBuilder<> CallSiteIRB(Call);
