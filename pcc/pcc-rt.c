@@ -18,14 +18,4 @@
 /// Unique value representing the current calling context.
 __thread uintptr_t __pcc_V = 0;
 
-/// Non-commutative but efficiently composable function to compute PCC values.
-///
-/// This corresponds to the function \p f in Mike Bond's paper.
-///
-/// \param V current calling context value
-/// \param cs call site identifier
-///
-/// \returns the updated calling context value
-uintptr_t __pcc_calculate(uintptr_t V, uintptr_t cs) { return 3 * V + cs; }
-
 uintptr_t __pcc_query() { return __pcc_V; }

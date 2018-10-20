@@ -44,7 +44,7 @@ public:
 
 } // namespace
 
-// Adapted from llvm::checkSanitizerInterfaceFunction
+// Adapted from `llvm::checkSanitizerInterfaceFunction`
 static Function *checkPCCInterfaceFunction(Constant *FuncOrBitcast) {
   if (isa<Function>(FuncOrBitcast)) {
     return cast<Function>(FuncOrBitcast);
@@ -71,6 +71,7 @@ bool ProbabilisticCallingContext::runOnModule(Module &M) {
   // calculates the probabilistic calling context
   Function *PCCCalculate = checkPCCInterfaceFunction(
       M.getOrInsertFunction(PCCCalculateName, IntTy, IntTy, IntTy));
+
   // PCCVar is the variable `__pcc_V` that stores the probabilistic calling
   // context
   GlobalVariable *PCCVar = new GlobalVariable(
@@ -83,20 +84,32 @@ bool ProbabilisticCallingContext::runOnModule(Module &M) {
       continue;
     }
 
-    // Load the current PCC value into a local variable (temp)
+    // (1) at the beginning of each function, load the the current PCC value
+    // into the local variable `temp`
     BasicBlock::iterator IP = F.getEntryBlock().getFirstInsertionPt();
     IRBuilder<> EntryIRB(&*IP);
     LoadInst *Temp = EntryIRB.CreateLoad(PCCVar);
 
     for (auto I = inst_begin(F); I != inst_end(F); ++I) {
-      // At each call site, compute the next calling context with `f` and
-      // update the global variable `V`
       if (auto *Call = dyn_cast<CallInst>(&*I)) {
+        // (2) at each call site, compute the next calling context and update
+        // the global variable `V`
+        //
+        // Note that a hash of the method name and line number are used for
+        // `cs` in Mike Bond's original paper. Since this is C/C++ and not
+        // Java, we just assign a random value to `cs` instead :)
         ConstantInt *CS = ConstantInt::get(IntTy, random());
 
         IRBuilder<> CallSiteIRB(Call);
-        CallInst *CallF = CallSiteIRB.CreateCall(PCCCalculate, {Temp, CS});
-        CallSiteIRB.CreateStore(CallF, PCCVar);
+        Value *Mul = CallSiteIRB.CreateMul(ConstantInt::get(IntTy, 3), Temp);
+        Value *Add = CallSiteIRB.CreateAdd(Mul, CS);
+        CallSiteIRB.CreateStore(Add, PCCVar);
+      } else if (auto *Return = dyn_cast<ReturnInst>(&*I)) {
+        // (3) at function return, store the local copy back into the global
+        // variable `V` (this redundancy is helpful for correctly maintaining
+        // `V` in the face of exception control flow)
+        IRBuilder<> ReturnIRB(Return);
+        ReturnIRB.CreateStore(Temp, PCCVar);
       }
     }
   }
