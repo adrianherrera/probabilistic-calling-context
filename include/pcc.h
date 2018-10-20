@@ -15,4 +15,4 @@
 #include <stdint.h>
 
 /// Query the current calling context.
-uintptr_t __pcc_get();
+uintptr_t __pcc_query();
