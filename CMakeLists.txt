@@ -10,4 +10,7 @@ add_definitions(${LLVM_DEFINITIONS})
 include_directories(${LLVM_INCLUDE_DIRS}
                     include)
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
+
 add_subdirectory(pcc)
