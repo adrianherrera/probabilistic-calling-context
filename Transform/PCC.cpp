@@ -29,7 +29,7 @@ using namespace llvm;
 
 namespace {
 
-static const char *const PCCVarName = "__pcc_V";
+static constexpr char *const PCCVarName = "__pcc_V";
 
 /// ProbabilisticCallingContext: instrument the code in a module to maintain a
 /// probabilistic unique value representing the current calling context.
@@ -41,7 +41,7 @@ public:
   bool runOnModule(Module &M) override;
 };
 
-} // namespace
+} // end anonymous namespace
 
 char ProbabilisticCallingContext::ID = 0;
 
@@ -68,7 +68,7 @@ bool ProbabilisticCallingContext::runOnModule(Module &M) {
     // into the local variable `temp`
     BasicBlock::iterator IP = F.getEntryBlock().getFirstInsertionPt();
     IRBuilder<> EntryIRB(&*IP);
-    LoadInst *Temp = EntryIRB.CreateLoad(PCCVar);
+    auto *Temp = EntryIRB.CreateLoad(PCCVar);
 
     for (auto I = inst_begin(F); I != inst_end(F); ++I) {
       if (auto *Call = dyn_cast<CallInst>(&*I)) {
@@ -85,8 +85,8 @@ bool ProbabilisticCallingContext::runOnModule(Module &M) {
         ConstantInt *CS = ConstantInt::get(IntTy, random());
 
         IRBuilder<> CallSiteIRB(Call);
-        Value *Mul = CallSiteIRB.CreateMul(ConstantInt::get(IntTy, 3), Temp);
-        Value *Add = CallSiteIRB.CreateAdd(Mul, CS);
+        auto *Mul = CallSiteIRB.CreateMul(ConstantInt::get(IntTy, 3), Temp);
+        auto *Add = CallSiteIRB.CreateAdd(Mul, CS);
         CallSiteIRB.CreateStore(Add, PCCVar);
       } else if (auto *Return = dyn_cast<ReturnInst>(&*I)) {
         // (3) at function return, store the local copy back into the global
