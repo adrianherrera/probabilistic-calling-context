@@ -1,2 +1,1 @@
-add_library(LLVMPCC MODULE PCC.cpp)
-add_library(pcc-rt STATIC pcc-rt.c)
+add_llvm_loadable_module(pcc-llvm PCC.cpp PLUGIN_TOOL opt)

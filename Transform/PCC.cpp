@@ -29,7 +29,7 @@ using namespace llvm;
 
 namespace {
 
-static constexpr char *const PCCVarName = "__pcc_V";
+static const char *const PCCVarName = "__pcc_V";
 
 /// ProbabilisticCallingContext: instrument the code in a module to maintain a
 /// probabilistic unique value representing the current calling context.

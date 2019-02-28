@@ -42,9 +42,9 @@ cmake ..
 make
 ```
 
-This will produce both `libLLVMPCC.so` and `libpcc-rt.a`.
+This will produce both `pcc-llvm.so` and `libpcc-rt.a`.
 
-* `libLLCMPCC.so`: The LLVM pass
-* `libpcc-rt.a`: A static library that is linked with your application and
-gives you the ability to query the calling context via `__pcc_query` (remember
-to include `pcc.h`).
+* `Transform/pcc-llvm.so`: The LLVM pass; and
+* `Runtime/libpcc-rt.a`: A static library that is linked with your application
+and gives you the ability to query the calling context via `__pcc_query`
+(remember to include `pcc.h`).
