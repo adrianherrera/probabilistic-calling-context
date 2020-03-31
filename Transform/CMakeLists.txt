@@ -1,1 +1,5 @@
-add_llvm_loadable_module(pcc-llvm PCC.cpp PLUGIN_TOOL opt)
+if(LLVM_PACKAGE_VERSION VERSION_GREATER_EQUAL 8)
+    add_llvm_library(pcc-llvm MODULE PCC.cpp PLUGIN_TOOL opt)
+else()
+    add_llvm_loadable_module(pcc-llvm PCC.cpp PLUGIN_TOOL opt)
+endif()
