@@ -17,6 +17,7 @@
 #include <stdlib.h>
 
 #include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/InlineAsm.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/Module.h"
@@ -30,6 +31,11 @@ using namespace llvm;
 namespace {
 
 static const char *const PCCVarName = "__pcc_V";
+
+static cl::opt<bool> ClUseCallSitePC(
+    "pcc-use-call-site-pc",
+    cl::desc("Use the program counter for the call site identifier"),
+    cl::init(false));
 
 /// ProbabilisticCallingContext: instrument the code in a module to maintain a
 /// probabilistic unique value representing the current calling context.
@@ -51,6 +57,15 @@ bool ProbabilisticCallingContext::runOnModule(Module &M) {
 
   // Either 32 or 64 bit depending on the target
   IntegerType *IntTy = DL.getIntPtrType(C);
+
+  // Decide on whether to use the program counter or a random integer as the
+  // call site identifier
+  InlineAsm *ReadPC = nullptr;
+  if (ClUseCallSitePC) {
+    ReadPC = InlineAsm::get(
+        FunctionType::get(IntegerType::getInt64Ty(C), /* isVarArg */ false),
+        "leaq (%rip), $0", /* Constraints */ "=r", /* hasSideEffects */ false);
+  }
 
   // PCCVar is the variable `__pcc_V` that stores the probabilistic calling
   // context
@@ -78,23 +93,27 @@ bool ProbabilisticCallingContext::runOnModule(Module &M) {
         //
         // Note that a hash of the method name and line number are used for
         // `cs` in Mike Bond's original paper. Since this is C/C++ and not
-        // Java, we just assign a random value to `cs` instead :)
-        //
-        // Originally I wanted to use the address of the call site, but this
-        // would not be consistent across multiple program executions (thanks
-        // ASLR!)
-        ConstantInt *CS = ConstantInt::get(IntTy, random());
+        // Java, we either use the call site runtime address or assign a random
+        // value to `cs` instead :)
+        IRBuilder<> IRB(I);
 
-        IRBuilder<> CallSiteIRB(I);
-        auto *Mul = CallSiteIRB.CreateMul(ConstantInt::get(IntTy, 3), Temp);
-        auto *Add = CallSiteIRB.CreateAdd(Mul, CS);
-        CallSiteIRB.CreateStore(Add, PCCVar);
+        Value *CS = nullptr;
+        if (ReadPC) {
+          CS = IRB.CreateZExtOrTrunc(IRB.CreateCall(ReadPC), IntTy);
+        } else {
+          CS = ConstantInt::get(IntTy, random());
+        }
+
+        assert(CS);
+        auto *Mul = IRB.CreateMul(ConstantInt::get(IntTy, 3), Temp);
+        auto *Add = IRB.CreateAdd(Mul, CS);
+        IRB.CreateStore(Add, PCCVar);
       } else if (isa<ReturnInst>(I)) {
         // (3) at function return, store the local copy back into the global
         // variable `V` (this redundancy is helpful for correctly maintaining
         // `V` in the face of exception control flow)
-        IRBuilder<> ReturnIRB(I);
-        ReturnIRB.CreateStore(Temp, PCCVar);
+        IRBuilder<> IRB(I);
+        IRB.CreateStore(Temp, PCCVar);
       }
     }
   }
