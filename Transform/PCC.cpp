@@ -70,8 +70,9 @@ bool ProbabilisticCallingContext::runOnModule(Module &M) {
     IRBuilder<> EntryIRB(&*IP);
     auto *Temp = EntryIRB.CreateLoad(PCCVar);
 
-    for (auto I = inst_begin(F); I != inst_end(F); ++I) {
-      if (auto *Call = dyn_cast<CallInst>(&*I)) {
+    for (auto It = inst_begin(F); It != inst_end(F); ++It) {
+      Instruction *I = &*I;
+      if (isa<CallInst>(I) || isa<InvokeInst>(I)) {
         // (2) at each call site, compute the next calling context and update
         // the global variable `V`
         //
@@ -84,15 +85,15 @@ bool ProbabilisticCallingContext::runOnModule(Module &M) {
         // ASLR!)
         ConstantInt *CS = ConstantInt::get(IntTy, random());
 
-        IRBuilder<> CallSiteIRB(Call);
+        IRBuilder<> CallSiteIRB(I);
         auto *Mul = CallSiteIRB.CreateMul(ConstantInt::get(IntTy, 3), Temp);
         auto *Add = CallSiteIRB.CreateAdd(Mul, CS);
         CallSiteIRB.CreateStore(Add, PCCVar);
-      } else if (auto *Return = dyn_cast<ReturnInst>(&*I)) {
+      } else if (isa<ReturnInst>(I)) {
         // (3) at function return, store the local copy back into the global
         // variable `V` (this redundancy is helpful for correctly maintaining
         // `V` in the face of exception control flow)
-        IRBuilder<> ReturnIRB(Return);
+        IRBuilder<> ReturnIRB(I);
         ReturnIRB.CreateStore(Temp, PCCVar);
       }
     }
