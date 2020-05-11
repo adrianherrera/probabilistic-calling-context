@@ -86,7 +86,7 @@ bool ProbabilisticCallingContext::runOnModule(Module &M) {
     auto *Temp = EntryIRB.CreateLoad(PCCVar);
 
     for (auto It = inst_begin(F); It != inst_end(F); ++It) {
-      Instruction *I = &*I;
+      Instruction *I = &*It;
       if (isa<CallInst>(I) || isa<InvokeInst>(I)) {
         // (2) at each call site, compute the next calling context and update
         // the global variable `V`
