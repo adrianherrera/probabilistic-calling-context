@@ -16,6 +16,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include "llvm/IR/CallSite.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/InlineAsm.h"
 #include "llvm/IR/InstIterator.h"
@@ -88,6 +89,14 @@ bool ProbabilisticCallingContext::runOnModule(Module &M) {
     for (auto It = inst_begin(F); It != inst_end(F); ++It) {
       Instruction *I = &*It;
       if (isa<CallInst>(I) || isa<InvokeInst>(I)) {
+        // Don't instrument LLVM intrinsics
+        CallSite CS(I);
+        if (auto *CalledF = CS.getCalledFunction()) {
+          if (CalledF->isIntrinsic()) {
+            continue;
+          }
+        }
+
         // (2) at each call site, compute the next calling context and update
         // the global variable `V`
         //
@@ -97,16 +106,16 @@ bool ProbabilisticCallingContext::runOnModule(Module &M) {
         // value to `cs` instead :)
         IRBuilder<> IRB(I);
 
-        Value *CS = nullptr;
+        Value *CallSiteID = nullptr;
         if (ReadPC) {
-          CS = IRB.CreateZExtOrTrunc(IRB.CreateCall(ReadPC), IntTy);
+          CallSiteID = IRB.CreateZExtOrTrunc(IRB.CreateCall(ReadPC), IntTy);
         } else {
-          CS = ConstantInt::get(IntTy, random());
+          CallSiteID = ConstantInt::get(IntTy, random());
         }
 
-        assert(CS);
+        assert(CallSiteID);
         auto *Mul = IRB.CreateMul(ConstantInt::get(IntTy, 3), Temp);
-        auto *Add = IRB.CreateAdd(Mul, CS);
+        auto *Add = IRB.CreateAdd(Mul, CallSiteID);
         IRB.CreateStore(Add, PCCVar);
       } else if (isa<ReturnInst>(I)) {
         // (3) at function return, store the local copy back into the global
