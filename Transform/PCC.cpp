@@ -117,7 +117,7 @@ bool ProbabilisticCallingContext::runOnModule(Module &M) {
         auto *Mul = IRB.CreateMul(ConstantInt::get(IntTy, 3), Temp);
         auto *Add = IRB.CreateAdd(Mul, CallSiteID);
         IRB.CreateStore(Add, PCCVar);
-      } else if (isa<ReturnInst>(I)) {
+      } else if (isa<ReturnInst>(I) || isa<ResumeInst>(I)) {
         // (3) at function return, store the local copy back into the global
         // variable `V` (this redundancy is helpful for correctly maintaining
         // `V` in the face of exception control flow)
